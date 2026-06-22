@@ -86,7 +86,7 @@ git push origin main
 git init
 
 # 2. 关联远程仓库（URL换成你自己的）
-git remote add origin https://github.com/你的用户名/仓库名.git
+git remote add origin https://github.com/Ciaptulin/FPS_Game.git
 
 # 3. 第一次推送（-u 会建立默认关联，下次直接 git push 即可）
 git push -u origin main
