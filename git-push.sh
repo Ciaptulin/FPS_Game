@@ -1,59 +1,52 @@
 #!/bin/bash
-# 适用于 Windows Git Bash 的一键提交脚本（带类型选择 + 编码修正）
+# One-click Git commit and push script (with type selection, UTF-8 safe)
 
-# 如果存在 Windows 保留文件 'nul'，自动删除并提醒（防止 Git 报错）
-if [ -f "nul" ]; then
-    echo "警告：发现 Windows 保留文件 'nul'，正在删除..."
-    rm -f "nul"
-fi
+# Remove Windows reserved file 'nul' if exists
+[ -f "nul" ] && echo "Warning: removing 'nul' file..." && rm -f "nul"
 
-# 尝试切换控制台代码页为 UTF-8（仅对 Windows CMD 有效，Git Bash 中无害）
-# 重定向到 /dev/null 避免创建任何文件
-command -v chcp.com >/dev/null 2>&1 && chcp.com 65001 >/dev/null 2>&1
-
-# 强制使用 UTF-8 环境变量
+# Set UTF-8 environment
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
-# 检查是否在 Git 仓库中
-if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-    echo "错误：当前目录不是 Git 仓库！"
-    read -p "按任意键退出..." -n1
+# Optionally set Git to use UTF-8 for commit messages
+git config --local i18n.commitencoding utf-8 >/dev/null 2>&1
+
+# Check if inside Git repo
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Error: not in a Git repository!"
+    read -p "Press any key to exit..." -n1
     exit 1
 fi
 
-# 获取当前分支
+# Get current branch
 branch=$(git symbolic-ref --short HEAD 2>/dev/null)
 if [ -z "$branch" ]; then
-    echo "无法获取当前分支，可能处于 detached HEAD 状态"
-    read -p "按任意键退出..." -n1
+    echo "Error: detached HEAD state."
+    read -p "Press any key to exit..." -n1
     exit 1
 fi
-echo "当前分支: $branch"
+echo "Current branch: $branch"
 
-# 检查是否有更改（包括未跟踪文件）
+# Check for changes
 if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
-    echo "没有需要提交的更改。"
-    read -p "按任意键退出..." -n1
+    echo "No changes to commit."
+    read -p "Press any key to exit..." -n1
     exit 0
 fi
 
-# ---------- 选择提交类型 ----------
-echo "请选择提交类型（输入数字）："
-echo "  1) feat     - 新功能"
-echo "  2) fix      - 修复 Bug"
-echo "  3) docs     - 文档变更"
-echo "  4) style    - 代码格式（不影响逻辑）"
-echo "  5) refactor - 重构"
-echo "  6) perf     - 性能优化"
-echo "  7) test     - 测试相关"
-echo "  8) chore    - 构建/工具变动"
-echo "  9) 不使用前缀（自定义）"
-read -p "请输入序号 (1-9，直接回车默认 9): " type_choice
-
-if [ -z "$type_choice" ]; then
-    type_choice=9
-fi
+# Select commit type
+echo "Select commit type (enter number):"
+echo "  1) feat     - new feature"
+echo "  2) fix      - bug fix"
+echo "  3) docs     - documentation"
+echo "  4) style    - code style (no logic change)"
+echo "  5) refactor - refactoring"
+echo "  6) perf     - performance improvement"
+echo "  7) test     - testing"
+echo "  8) chore    - build/tool changes"
+echo "  9) no prefix (custom)"
+read -p "Enter number (1-9, default 9): " type_choice
+[ -z "$type_choice" ] && type_choice=9
 
 case $type_choice in
     1) prefix="feat: " ;;
@@ -65,40 +58,38 @@ case $type_choice in
     7) prefix="test: " ;;
     8) prefix="chore: " ;;
     9) prefix="" ;;
-    *) 
-        echo "无效输入，将不使用前缀。"
-        prefix="" ;;
+    *) prefix="" ;;
 esac
 
-# ---------- 输入提交描述 ----------
-echo "请输入本次更新的描述："
+# Input commit description
+echo "Enter commit description (you can type Chinese):"
 read commit_desc
-
-if [ -z "$commit_desc" ]; then
-    commit_desc="Update on $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "使用默认描述: $commit_desc"
-fi
+[ -z "$commit_desc" ] && commit_desc="Update on $(date '+%Y-%m-%d %H:%M:%S')"
 
 commit_message="${prefix}${commit_desc}"
-echo "最终提交信息: $commit_message"
+echo "Final commit message: $commit_message"
 
-# ---------- 执行提交和推送 ----------
+# Add and commit using a temporary file to avoid encoding issues with command line
+tmpfile=$(mktemp)
+echo "$commit_message" > "$tmpfile"
 git add .
-echo "已添加所有更改。"
+git commit -F "$tmpfile"
+commit_status=$?
+rm -f "$tmpfile"
 
-git commit -m "$commit_message"
-if [ $? -ne 0 ]; then
-    echo "提交失败，请检查错误信息。"
-    read -p "按任意键退出..." -n1
+if [ $commit_status -ne 0 ]; then
+    echo "Commit failed. Please check errors."
+    read -p "Press any key to exit..." -n1
     exit 1
 fi
 
+# Push
 git push origin "$branch"
 if [ $? -ne 0 ]; then
-    echo "推送失败，请检查网络或权限。"
-    read -p "按任意键退出..." -n1
+    echo "Push failed. Please check network or permissions."
+    read -p "Press any key to exit..." -n1
     exit 1
 fi
 
-echo "提交并推送成功！"
-read -p "按任意键退出..." -n1
+echo "Commit and push successful!"
+read -p "Press any key to exit..." -n1
