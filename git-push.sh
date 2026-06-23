@@ -1,7 +1,17 @@
 #!/bin/bash
-# 适用于 Windows Git Bash 的一键提交脚本（带提交类型选择）
+# 适用于 Windows Git Bash 的一键提交脚本（带类型选择 + 编码修正）
 
-# 强制使用 UTF-8 避免中文乱码
+# 如果存在 Windows 保留文件 'nul'，自动删除并提醒（防止 Git 报错）
+if [ -f "nul" ]; then
+    echo "警告：发现 Windows 保留文件 'nul'，正在删除..."
+    rm -f "nul"
+fi
+
+# 尝试切换控制台代码页为 UTF-8（仅对 Windows CMD 有效，Git Bash 中无害）
+# 重定向到 /dev/null 避免创建任何文件
+command -v chcp.com >/dev/null 2>&1 && chcp.com 65001 >/dev/null 2>&1
+
+# 强制使用 UTF-8 环境变量
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
@@ -28,7 +38,7 @@ if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --other
     exit 0
 fi
 
-# ---------- 新增：选择提交类型 ----------
+# ---------- 选择提交类型 ----------
 echo "请选择提交类型（输入数字）："
 echo "  1) feat     - 新功能"
 echo "  2) fix      - 修复 Bug"
@@ -41,7 +51,6 @@ echo "  8) chore    - 构建/工具变动"
 echo "  9) 不使用前缀（自定义）"
 read -p "请输入序号 (1-9，直接回车默认 9): " type_choice
 
-# 若直接回车，默认无前缀
 if [ -z "$type_choice" ]; then
     type_choice=9
 fi
@@ -65,13 +74,11 @@ esac
 echo "请输入本次更新的描述："
 read commit_desc
 
-# 如果描述为空，生成默认描述
 if [ -z "$commit_desc" ]; then
     commit_desc="Update on $(date '+%Y-%m-%d %H:%M:%S')"
     echo "使用默认描述: $commit_desc"
 fi
 
-# 拼接最终提交信息
 commit_message="${prefix}${commit_desc}"
 echo "最终提交信息: $commit_message"
 
