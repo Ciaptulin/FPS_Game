@@ -1,7 +1,7 @@
 #!/bin/bash
-# 适用于 Windows Git Bash 的一键提交脚本
+# 适用于 Windows Git Bash 的一键提交脚本（带提交类型选择）
 
-# 强制使用 UTF-8 避免中文乱码（Git Bash 默认就是 UTF-8，但保险起见）
+# 强制使用 UTF-8 避免中文乱码
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
@@ -28,16 +28,54 @@ if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --other
     exit 0
 fi
 
-# 提示输入提交信息（支持中文输入）
-echo "请输入本次更新的描述："
-read commit_message
+# ---------- 新增：选择提交类型 ----------
+echo "请选择提交类型（输入数字）："
+echo "  1) feat     - 新功能"
+echo "  2) fix      - 修复 Bug"
+echo "  3) docs     - 文档变更"
+echo "  4) style    - 代码格式（不影响逻辑）"
+echo "  5) refactor - 重构"
+echo "  6) perf     - 性能优化"
+echo "  7) test     - 测试相关"
+echo "  8) chore    - 构建/工具变动"
+echo "  9) 不使用前缀（自定义）"
+read -p "请输入序号 (1-9，直接回车默认 9): " type_choice
 
-if [ -z "$commit_message" ]; then
-    commit_message="Update on $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "使用默认信息: $commit_message"
+# 若直接回车，默认无前缀
+if [ -z "$type_choice" ]; then
+    type_choice=9
 fi
 
-# 添加、提交、推送
+case $type_choice in
+    1) prefix="feat: " ;;
+    2) prefix="fix: " ;;
+    3) prefix="docs: " ;;
+    4) prefix="style: " ;;
+    5) prefix="refactor: " ;;
+    6) prefix="perf: " ;;
+    7) prefix="test: " ;;
+    8) prefix="chore: " ;;
+    9) prefix="" ;;
+    *) 
+        echo "无效输入，将不使用前缀。"
+        prefix="" ;;
+esac
+
+# ---------- 输入提交描述 ----------
+echo "请输入本次更新的描述："
+read commit_desc
+
+# 如果描述为空，生成默认描述
+if [ -z "$commit_desc" ]; then
+    commit_desc="Update on $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "使用默认描述: $commit_desc"
+fi
+
+# 拼接最终提交信息
+commit_message="${prefix}${commit_desc}"
+echo "最终提交信息: $commit_message"
+
+# ---------- 执行提交和推送 ----------
 git add .
 echo "已添加所有更改。"
 
